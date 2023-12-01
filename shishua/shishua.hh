@@ -1,42 +1,18 @@
+// Licensed CC0 Public Domain
+// Based on https://github.com/espadrine/shishua/blob/master/shishua.h
+
 #ifndef SHISHUA_H
 #define SHISHUA_H
 
-#define SHISHUA_TARGET_SCALAR 0
-#define SHISHUA_TARGET_AVX2 1
-#define SHISHUA_TARGET_SSE2 2
-#define SHISHUA_TARGET_NEON 3
+#if defined(__AVX2__)
+#  include "shishua-avx2.hh"
+#endif // __AVX2__
 
-#ifndef SHISHUA_TARGET
-#  if defined(__AVX2__) && (defined(__x86_64__) || defined(_M_X64))
-#    define SHISHUA_TARGET SHISHUA_TARGET_AVX2
-#  elif defined(__x86_64__) || defined(_M_X64) || defined(__SSE2__) || (defined(_M_IX86_FP) && _M_IX86_FP >= 2)
-#    define SHISHUA_TARGET SHISHUA_TARGET_SSE2
-// GCC's NEON codegen leaves much to be desired, at least as of 9.2.0. The
-// scalar path ends up being faster.
-// Device: Google Pixel 2 XL, 2.46GHz Qualcomm Snapdragon 835
-//   algorithm           |   GCC 9.2.0    |  Clang 9.0.1
-//   shishua neon        | 0.2845 ns/byte | 0.0966 ns/byte
-//   shishua scalar      | 0.2056 ns/byte | 0.2958 ns/byte
-//   shishua half neon   | 0.5169 ns/byte | 0.1929 ns/byte
-//   shishua half scalar | 0.2496 ns/byte | 0.2911 ns/byte
-// Therefore, we only autoselect the NEON path on Clang, at least until GCC's
-// NEON codegen improves.
-#  elif (defined(__ARM_NEON) || defined(__ARM_NEON__)) && defined(__clang__)
-#    define SHISHUA_TARGET SHISHUA_TARGET_NEON
-#  else
-#    define SHISHUA_TARGET SHISHUA_TARGET_SCALAR
-#  endif
-#endif
+#if defined(__SSE2__)
+#  include "shishua-sse2.hh"
+#endif // __AVX2__
 
-// These are all optional, with defining SHISHUA_TARGET_SCALAR, you only
-// need this header.
-#if SHISHUA_TARGET == SHISHUA_TARGET_AVX2
-#  include "shishua-avx2.h"
-#elif SHISHUA_TARGET == SHISHUA_TARGET_SSE2
-#  include "shishua-sse2.h"
-#elif SHISHUA_TARGET == SHISHUA_TARGET_NEON
-#  include "shishua-neon.h"
-#else // SHISHUA_TARGET == SHISHUA_TARGET_SCALAR
+ // Shishua Scalar version
 
 // Portable scalar implementation of shishua.
 // Designed to balance performance and code size.
@@ -45,6 +21,8 @@
 #include <string.h>
 #include <assert.h>
 
+namespace Shishua::Scalar {
+
 // Note: While it is an array, a "lane" refers to 4 consecutive uint64_t.
 typedef struct prng_state {
   uint64_t state[16];  // 4 lanes
@@ -52,21 +30,11 @@ typedef struct prng_state {
   uint64_t counter[4]; // 1 lane
 } prng_state;
 
-// buf could technically alias with prng_state, according to the compiler.
-#if defined(__GNUC__) || defined(_MSC_VER)
-#  define SHISHUA_RESTRICT __restrict
-#else
-#  define SHISHUA_RESTRICT
-#endif
-
 // Writes a 64-bit little endian integer to dst
 static inline void prng_write_le64(void *dst, uint64_t val) {
   // Define to write in native endianness with memcpy
   // Also, use memcpy on known little endian setups.
-#if defined(SHISHUA_NATIVE_ENDIAN) \
-   || defined(_WIN32) \
-   || (defined(__BYTE_ORDER__) && __BYTE_ORDER__ == __ORDER_LITTLE_ENDIAN__) \
-   || defined(__LITTLE_ENDIAN__)
+#if __BYTE_ORDER == __LITTLE_ENDIAN // ! __BIG_ENDIAN
   memcpy(dst, &val, sizeof(uint64_t));
 #else
   // Byteshift write.
@@ -79,7 +47,7 @@ static inline void prng_write_le64(void *dst, uint64_t val) {
 }
 
 // buf's size must be a multiple of 128 bytes.
-static inline void prng_gen(prng_state *SHISHUA_RESTRICT state, uint8_t *SHISHUA_RESTRICT buf, size_t size) {
+static inline void prng_gen(prng_state *__restrict state, uint8_t *__restrict buf, size_t size) {
   uint8_t *b = buf;
   // TODO: consider adding proper uneven write handling
   assert((size % 128 == 0) && "buf's size must be a multiple of 128 bytes.");
@@ -195,7 +163,6 @@ static inline void prng_gen(prng_state *SHISHUA_RESTRICT state, uint8_t *SHISHUA
     }
   }
 }
-#undef SHISHUA_RESTRICT
 
 // Nothing up my sleeve: those are the hex digits of Φ,
 // the least approximable irrational number.
@@ -207,10 +174,10 @@ static uint64_t phi[16] = {
   0x626E33B8D04B4331, 0xBBF73C790D94F79D, 0x471C4AB3ED3D82A5, 0xFEC507705E4AE6E5,
 };
 
-void prng_init(prng_state *s, uint64_t seed[4]) {
+static inline void prng_init(prng_state *s, const uint64_t seed[4]) {
   memset(s, 0, sizeof(prng_state));
-# define STEPS 1
-# define ROUNDS 13
+  constexpr unsigned STEPS = 1;
+  constexpr unsigned ROUNDS = 13;
   // Diffuse first two seed elements in s0, then the last two. Same for s1.
   // We must keep half of the state unchanged so users cannot set a bad state.
   memcpy(s->state, phi, sizeof(phi));
@@ -227,8 +194,8 @@ void prng_init(prng_state *s, uint64_t seed[4]) {
        s->state[j+12] = s->output[j+ 0];
     }
   }
-# undef STEPS
-# undef ROUNDS
 }
-#endif // SHISHUA_TARGET == SHISHUA_TARGET_SCALAR
-#endif // SHISHUA_SCALAR_H
+
+} // Shishua::Scalar
+
+#endif // SHISHUA_H
