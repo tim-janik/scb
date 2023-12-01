@@ -1,3 +1,6 @@
+// Licensed CC0 Public Domain
+// Based on https://github.com/espadrine/shishua/blob/master/shishua-avx2.h
+
 #ifndef SHISHUA_AVX2_H
 #define SHISHUA_AVX2_H
 #include <stdint.h>
@@ -5,6 +8,9 @@
 #include <string.h>
 #include <immintrin.h>
 #include <assert.h>
+
+namespace Shishua::Avx2 {
+
 typedef struct prng_state {
   __m256i state[4];
   __m256i output[4];
@@ -89,10 +95,10 @@ static uint64_t phi[16] = {
   0x626E33B8D04B4331, 0xBBF73C790D94F79D, 0x471C4AB3ED3D82A5, 0xFEC507705E4AE6E5,
 };
 
-void prng_init(prng_state *s, uint64_t seed[4]) {
+static inline void prng_init(prng_state *s, const uint64_t seed[4]) {
   memset(s, 0, sizeof(prng_state));
-# define STEPS 1
-# define ROUNDS 13
+  constexpr unsigned STEPS = 1;
+  constexpr unsigned ROUNDS = 13;
   uint8_t buf[128 * STEPS];
   // Diffuse first two seed elements in s0, then the last two. Same for s1.
   // We must keep half of the state unchanged so users cannot set a bad state.
@@ -105,7 +111,8 @@ void prng_init(prng_state *s, uint64_t seed[4]) {
     s->state[0] = s->output[3]; s->state[1] = s->output[2];
     s->state[2] = s->output[1]; s->state[3] = s->output[0];
   }
-# undef STEPS
-# undef ROUNDS
 }
-#endif
+
+} // Shishua::Avx2
+
+#endif // SHISHUA_AVX2_H
