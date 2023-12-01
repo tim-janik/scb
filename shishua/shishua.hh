@@ -198,4 +198,15 @@ static inline void prng_init(prng_state *s, const uint64_t seed[4]) {
 
 } // Shishua::Scalar
 
+/// Namespace containing the fastest Shishua for the current compiler target.
+namespace Shishua {
+#if defined(__AVX2__)
+using namespace Avx2;
+#elif defined(__SSE2__)
+using namespace Sse2;
+#else
+using namespace Scalar;
+#endif
+} // Shishua
+
 #endif // SHISHUA_H
