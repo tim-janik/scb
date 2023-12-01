@@ -3,18 +3,37 @@
 // ChaCha implementations for ALU, SSE, AVX2, based on Public Domain code from:
 // http://cr.yp.to/streamciphers/timings/estreambench/submissions/salsa20/chacha8/ref/chacha.c and CryptoPP
 
+#if defined(__SSE2__)
+#include <xmmintrin.h>
+#include <emmintrin.h>
+#endif // __SSSE2__
+
+#if defined(__SSSE3__)
+#include <tmmintrin.h>
+#endif // __SSSE3__
+
+#if defined(__AVX2__)
+#include <xmmintrin.h>
+#include <emmintrin.h>
+#include <immintrin.h>
+#endif // __AVX2__
+
+
+/// Namespace for the ChaCha cipher
+namespace ChaCha {
 [[maybe_unused]] static inline uint32_t bswap32    (uint32_t v) noexcept { return __builtin_bswap32 (v); }
+[[maybe_unused]] static inline uint64_t bswap64    (uint64_t v) noexcept { return __builtin_bswap64 (v); }
 #if __BYTE_ORDER == __LITTLE_ENDIAN // ! __BIG_ENDIAN
 [[maybe_unused]] static inline uint32_t aslittle32 (uint32_t v) noexcept { return v; }
 [[maybe_unused]] static inline uint64_t aslittle64 (uint64_t v) noexcept { return v; }
 #else
 [[maybe_unused]] static inline uint32_t aslittle32 (uint32_t v) noexcept { return bswap32 (v); }
-[[maybe_unused]] static inline uint64_t aslittle64 (uint64_t v) noexcept { return __builtin_bswap64 (v); }
+[[maybe_unused]] static inline uint64_t aslittle64 (uint64_t v) noexcept { return bswap64 (v); }
 #endif
 
 /// Original ChaCha IV with 64 bit nonce and 64 bit counter.
 static void
-chacha_key_setup (std::array<uint32_t, 16> &state, const unsigned keybits, const std::array<uint8_t, 32> &key, uint64_t nonce, uint64_t counter = 0) noexcept
+key_setup (std::array<uint32_t, 16> &state, const unsigned keybits, const std::array<uint8_t, 32> &key, uint64_t nonce, uint64_t counter = 0) noexcept
 {
   assert (keybits == 128 || keybits == 256);
 
@@ -35,8 +54,8 @@ chacha_key_setup (std::array<uint32_t, 16> &state, const unsigned keybits, const
 
 /// Nonce setup for RFC7539
 static void
-chacha_rfc7539_setup (std::array<uint32_t, 16> &state, const std::array<uint8_t, 32> &key,
-                      const std::array<uint8_t, 12> &nonce, uint32_t counter = 0) noexcept
+rfc7539_setup (std::array<uint32_t, 16> &state, const std::array<uint8_t, 32> &key,
+               const std::array<uint8_t, 12> &nonce, uint32_t counter = 0) noexcept
 {
   const char sigma[] = "expand 32-byte k";
   uint32_t u32;
@@ -84,7 +103,7 @@ qround32 (uint32_t &a, uint32_t &b, uint32_t &c, uint32_t &d) noexcept
 } // Alu
 
 static void
-chacha_alu (std::array<uint32_t, 16> &state, const uint8_t *input, uint8_t *output, unsigned int rounds)
+alu_block (std::array<uint32_t, 16> &state, const uint8_t *input, uint8_t *output, unsigned int rounds)
 {
   using namespace Alu;
   uint32_t x0, x1, x2, x3, x4, x5, x6, x7, x8, x9, x10, x11, x12, x13, x14, x15;
@@ -152,29 +171,17 @@ chacha_alu (std::array<uint32_t, 16> &state, const uint8_t *input, uint8_t *outp
 //
 #if defined(__SSE2__)
 // Based on https://github.com/weidai11/cryptopp/blob/master/chacha_simd.cpp
-#include <xmmintrin.h>
-#include <emmintrin.h>
-#if defined(__SSSE3__)
-#include <tmmintrin.h>
-#endif // __SSSE3__
-
 namespace Sse2 {
 template<unsigned int R>
 inline __m128i RotateLeft(const __m128i val)
 {
-#ifdef __XOP__
-  return _mm_roti_epi32(val, R);
-#else
   return _mm_or_si128(_mm_slli_epi32(val, R), _mm_srli_epi32(val, 32-R));
-#endif
 }
 
 template<>
 inline __m128i RotateLeft<8>(const __m128i val)
 {
-#if defined(__XOP__)
-  return _mm_roti_epi32(val, 8);
-#elif defined(__SSSE3__)
+#if defined(__SSSE3__)
   const __m128i mask = _mm_set_epi8(14,13,12,15, 10,9,8,11, 6,5,4,7, 2,1,0,3);
   return _mm_shuffle_epi8(val, mask);
 #else
@@ -185,9 +192,7 @@ inline __m128i RotateLeft<8>(const __m128i val)
 template<>
 inline __m128i RotateLeft<16>(const __m128i val)
 {
-#if defined(__XOP__)
-  return _mm_roti_epi32(val, 16);
-#elif defined(__SSSE3__)
+#if defined(__SSSE3__)
   const __m128i mask = _mm_set_epi8(13,12,15,14, 9,8,11,10, 5,4,7,6, 1,0,3,2);
   return _mm_shuffle_epi8(val, mask);
 #else
@@ -197,7 +202,7 @@ inline __m128i RotateLeft<16>(const __m128i val)
 } // Sse2
 
 static void
-chacha_sse (std::array<uint32_t, 16> &state, const uint8_t *input, uint8_t *output, unsigned int rounds)
+sse_block (std::array<uint32_t, 16> &state, const uint8_t *input, uint8_t *output, unsigned int rounds)
 {
   using namespace Sse2;
   const __m128i state0 = _mm_load_si128(reinterpret_cast<const __m128i*>(&state[0*4]));
@@ -471,9 +476,6 @@ static constexpr unsigned sse_blocks = 0;
 //
 #if defined(__AVX2__)
 // Based on https://github.com/weidai11/cryptopp/blob/master/chacha_avx.cpp
-#include <xmmintrin.h>
-#include <emmintrin.h>
-#include <immintrin.h>
 
 namespace Avx2 {
 template<unsigned int R>
@@ -500,7 +502,7 @@ inline __m256i RotateLeft<16>(const __m256i val)
 } // Avx2
 
 static void
-chacha_avx2(std::array<uint32_t, 16> &state, const uint8_t *input, uint8_t *output, unsigned int rounds)
+avx2_block(std::array<uint32_t, 16> &state, const uint8_t *input, uint8_t *output, unsigned int rounds)
 {
   using namespace Avx2;
   const __m256i state0 = _mm256_broadcastsi128_si256(
@@ -837,3 +839,5 @@ static constexpr unsigned avx_blocks = 8;
 static void chacha_avx2 (std::array<uint32_t, 16>&, const uint8_t*, uint8_t*, unsigned int) { assert (!"reached"); }
 static constexpr unsigned avx_blocks = 0;
 #endif // !__AVX2__
+
+} // ChaCha
