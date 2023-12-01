@@ -840,4 +840,62 @@ static void chacha_avx2 (std::array<uint32_t, 16>&, const uint8_t*, uint8_t*, un
 static constexpr unsigned avx_blocks = 0;
 #endif // !__AVX2__
 
+static constexpr unsigned chacha_max_blocks = std::max (1u, std::max (sse_blocks, avx_blocks));
+
+static size_t
+generate_blocks (std::array<uint32_t, 16> &state, size_t maxlength, const uint8_t *input, uint8_t *output, unsigned rounds, const unsigned kind)
+{
+  const uint8_t *const bound = output + maxlength;
+  if (avx_blocks && kind >= 4)
+    while (output + 64 * avx_blocks < bound) {
+      avx2_block (state, input, output, rounds);
+      output += avx_blocks * 64;
+      input = !input ? nullptr : input + avx_blocks * 64;
+    }
+  if (sse_blocks && kind >= 2)
+    while (output + 64 * sse_blocks < bound) {
+      sse_block (state, input, output, rounds);
+      output += sse_blocks * 64;
+      input = !input ? nullptr : input + sse_blocks * 64;
+    }
+  while (output + 64 < bound) {
+    alu_block (state, input, output, rounds);
+    output += 1 * 64;
+    input = !input ? nullptr : input + 1 * 64;
+  }
+  return maxlength - (bound - output);
+}
+
+static size_t
+encrypt (std::array<uint32_t, 16> &state, const size_t blocklength, const uint8_t *input, uint8_t *output, unsigned rounds)
+{
+  const uint8_t *const bound = output + blocklength;
+  if (avx_blocks)
+    while (output + 64 * avx_blocks < bound) {
+      avx2_block (state, input, output, rounds);
+      output += avx_blocks * 64;
+      input = !input ? nullptr : input + avx_blocks * 64;
+    }
+  if (sse_blocks)
+    while (output + 64 * sse_blocks < bound) {
+      sse_block (state, input, output, rounds);
+      output += sse_blocks * 64;
+      input = !input ? nullptr : input + sse_blocks * 64;
+    }
+  while (output + 64 < bound) {
+    alu_block (state, input, output, rounds);
+    output += 1 * 64;
+    input = !input ? nullptr : input + 1 * 64;
+  }
+  const size_t remaining = bound - output;
+  if (remaining) {
+    std::array<uint8_t, 64> rest { 0 };
+    if (input)
+      memcpy (&rest[0], input, remaining);
+    alu_block (state, rest.data(), rest.data(), rounds);
+    memcpy (output, &rest[0], remaining);
+  }
+  return blocklength;
+}
+
 } // ChaCha
