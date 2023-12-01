@@ -1,3 +1,6 @@
+// Licensed CC0 Public Domain
+// Based on https://github.com/espadrine/shishua/blob/master/shishua-sse2.h
+
 // An SSE2/SSSE3 version of shishua. Slower than AVX2, but more compatible.
 // Also compatible with 32-bit x86.
 //
@@ -6,25 +9,37 @@
 // Consider the half version if AVX2 is not available.
 #ifndef SHISHUA_SSE2_H
 #define SHISHUA_SSE2_H
+
 #include <stdint.h>
 #include <stddef.h>
 #include <assert.h>
+
 // Note: cl.exe doesn't define __SSSE3__
 #if defined(__SSSE3__) || defined(__AVX__)
 #  include <tmmintrin.h> // SSSE3
-#  define SHISHUA_ALIGNR_EPI8(hi, lo, amt) \
-   _mm_alignr_epi8(hi, lo, amt)
 #else
 #  include <emmintrin.h> // SSE2
+#endif
+
+namespace Shishua::Sse2 {
+
+template<unsigned AMT> extern inline __m128i __attribute__((__gnu_inline__, __always_inline__))
+SHISHUA_ALIGNR_EPI8 (__m128i hi, __m128i lo)
+{
+#if defined(__SSSE3__) || defined(__AVX__)
+  return _mm_alignr_epi8(hi, lo, AMT);
+#else
 // Emulate _mm_alignr_epi8 for SSE2. It's a little slow.
 // The compiler may convert it to a sequence of shufps instructions, which is
 // perfectly fine.
-#  define SHISHUA_ALIGNR_EPI8(hi, lo, amt) \
+  return
    _mm_or_si128( \
-     _mm_slli_si128(hi, 16 - (amt)), \
-     _mm_srli_si128(lo, amt) \
+     _mm_slli_si128(hi, 16 - (AMT)), \
+     _mm_srli_si128(lo, AMT) \
    )
+    ;
 #endif
+}
 
 typedef struct prng_state {
   __m128i state[8];
@@ -34,29 +49,36 @@ typedef struct prng_state {
 
 // Wrappers for x86 targets which usually lack these intrinsics.
 // Don't call these with side effects.
+extern inline __m128i __attribute__((__gnu_inline__, __always_inline__))
+SHISHUA_SET_EPI64X (long long b, long long a)
+{
 #if defined(__x86_64__) || defined(_M_X64)
-#   define SHISHUA_SET_EPI64X(b, a) _mm_set_epi64x(b, a)
-#   define SHISHUA_CVTSI64_SI128(x) _mm_cvtsi64_si128(x)
+  return _mm_set_epi64x (b, a);
 #else
-#   define SHISHUA_SET_EPI64X(b, a) \
+  return
       _mm_set_epi32( \
         (int)(((uint64_t)(b)) >> 32), \
         (int)(b), \
         (int)(((uint64_t)(a)) >> 32), \
         (int)(a) \
       )
-#   define SHISHUA_CVTSI64_SI128(x) SHISHUA_SET_EPI64X(0, x)
+        ;
 #endif
-
-// buf could technically alias with prng_state, according to the compiler.
-#if defined(__GNUC__) || defined(_MSC_VER)
-#  define SHISHUA_RESTRICT __restrict
+}
+extern inline __m128i __attribute__((__gnu_inline__, __always_inline__))
+SHISHUA_CVTSI64_SI128 (long long x)
+{
+#if defined(__x86_64__) || defined(_M_X64)
+  return _mm_cvtsi64_si128(x);
 #else
-#  define SHISHUA_RESTRICT
+  return
+    SHISHUA_SET_EPI64X(0, x)
+    ;
 #endif
+}
 
 // buf's size must be a multiple of 128 bytes.
-static inline void prng_gen(prng_state *SHISHUA_RESTRICT s, uint8_t *SHISHUA_RESTRICT buf, size_t size) {
+static inline void prng_gen(prng_state *__restrict s, uint8_t *__restrict buf, size_t size) {
   __m128i counter_lo = s->counter[0], counter_hi = s->counter[1];
   // The counter is not necessary to beat PractRand.
   // It sets a lower bound of 2^71 bytes = 2 ZiB to the period,
@@ -117,8 +139,8 @@ static inline void prng_gen(prng_state *SHISHUA_RESTRICT s, uint8_t *SHISHUA_RES
       //   x_lo = (y_lo << 96) | (y_hi >> 32)
       //   x_hi = (y_hi << 96) | (y_lo >> 32)
       // which we can do with 2 _mm_alignr_epi8 instructions.
-      t_lo = SHISHUA_ALIGNR_EPI8(s_lo, s_hi, 4);
-      t_hi = SHISHUA_ALIGNR_EPI8(s_hi, s_lo, 4);
+      t_lo = SHISHUA_ALIGNR_EPI8<4> (s_lo, s_hi);
+      t_hi = SHISHUA_ALIGNR_EPI8<4> (s_hi, s_lo);
 
       // Addition is the main source of diffusion.
       // Storing the output in the state keeps that diffusion permanently.
@@ -138,8 +160,8 @@ static inline void prng_gen(prng_state *SHISHUA_RESTRICT s, uint8_t *SHISHUA_RES
       u1_lo = _mm_srli_epi64(s_lo, 3);
       u1_hi = _mm_srli_epi64(s_hi, 3);
 
-      t_lo = SHISHUA_ALIGNR_EPI8(s_hi, s_lo, 12);
-      t_hi = SHISHUA_ALIGNR_EPI8(s_lo, s_hi, 12);
+      t_lo = SHISHUA_ALIGNR_EPI8<12> (s_hi, s_lo);
+      t_hi = SHISHUA_ALIGNR_EPI8<12> (s_lo, s_hi);
 
       s->state[4 * j + 2] = _mm_add_epi64(t_lo, u1_lo);
       s->state[4 * j + 3] = _mm_add_epi64(t_hi, u1_hi);
@@ -175,13 +197,13 @@ static uint64_t phi[16] = {
   0x626E33B8D04B4331, 0xBBF73C790D94F79D, 0x471C4AB3ED3D82A5, 0xFEC507705E4AE6E5,
 };
 
-void prng_init(prng_state *s, uint64_t seed[4]) {
+static inline void prng_init(prng_state *s, const uint64_t seed[4]) {
   // Note: output is uninitialized at first, but since we pass NULL, its value
   // is initially ignored.
   s->counter[0] = _mm_setzero_si128();
   s->counter[1] = _mm_setzero_si128();
-# define ROUNDS 13
-# define STEPS 1
+  constexpr unsigned STEPS = 1;
+  constexpr unsigned ROUNDS = 13;
   // Diffuse first two seed elements in s0, then the last two. Same for s1.
   // We must keep half of the state unchanged so users cannot set a bad state.
   __m128i seed_0 = SHISHUA_CVTSI64_SI128(seed[0]);
@@ -204,11 +226,7 @@ void prng_init(prng_state *s, uint64_t seed[4]) {
     s->state[4] = s->output[2];  s->state[5] = s->output[3];
     s->state[6] = s->output[0];  s->state[7] = s->output[1];
   }
-# undef STEPS
-# undef ROUNDS
 }
-#undef SHISHUA_CVTSI64_SI128
-#undef SHISHUA_ALIGNR_EPI8
-#undef SHISHUA_SET_EPI64X
-#undef SHISHUA_RESTRICT
-#endif
+} // Shishua::Sse2
+
+#endif // SHISHUA_SSE2_H
