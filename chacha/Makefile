@@ -7,9 +7,9 @@ CXX		:= $(if $(MAYBE_CLANG), $(MAYBE_CLANG), $(CXX))
 OPTIMIZE	:= -O3 -march=native
 
 # == chacha ==
-chacha: chacha.cc Makefile
+chacha: main.cc Makefile
 	$(CXX) -std=gnu++17 -Wall $(OPTIMIZE) $< -o chacha
-chacha: chacha.hh
+chacha: chacha.cc chacha.hh
 clean: ; rm -f ./chacha
 all: chacha
 
