@@ -2,7 +2,7 @@
 
 all:		# Default Rule
 
-SUBDIRS	:= chacha shishua
+SUBDIRS	:= keccak chacha shishua
 
 all clean check:
 	 @ true $(foreach DIR, $(SUBDIRS), && $(MAKE) -C "$(DIR)" "$@" )
