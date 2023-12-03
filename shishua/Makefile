@@ -7,9 +7,9 @@ CXX		:= $(if $(MAYBE_CLANG), $(MAYBE_CLANG), $(CXX))
 OPTIMIZE	:= -O3 -march=native # -march=x86-64-v3 -march=x86-64-v2 -march=x86-64
 
 # == shishua ==
-shishua: shishua.cc Makefile
+shishua: main.cc Makefile
 	$(CXX) -std=gnu++17 -Wall $(OPTIMIZE) $< -o shishua
-shishua.cc: shishua.hh shishua-sse2.hh shishua-avx2.hh
+shishua: shishua.cc shishua.hh shishua-sse2.hh shishua-avx2.hh
 clean: ; rm -f ./shishua
 all: shishua
 

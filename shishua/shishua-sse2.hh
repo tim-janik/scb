@@ -219,7 +219,7 @@ static inline void prng_init(prng_state *s, const uint64_t seed[4]) {
   s->state[6] = _mm_xor_si128(seed_0, _mm_loadu_si128((__m128i *)&phi[12]));
   s->state[7] = _mm_xor_si128(seed_1, _mm_loadu_si128((__m128i *)&phi[14]));
 
-  for (int i = 0; i < ROUNDS; i++) {
+  for (unsigned i = 0; i < ROUNDS; i++) {
     prng_gen(s, NULL, 128 * STEPS);
     s->state[0] = s->output[6];  s->state[1] = s->output[7];
     s->state[2] = s->output[4];  s->state[3] = s->output[5];
