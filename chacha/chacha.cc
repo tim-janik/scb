@@ -7,6 +7,7 @@
 
 #include "chacha.hh"
 
+#include <vector>
 #include <cstdio>
 #include <ctime>
 #include <string>
