@@ -1,10 +1,10 @@
-# This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+# Dedicated to the Public Domain under the Unlicense: https://unlicense.org/UNLICENSE
 
 all:		# Default Rule
 
 MAYBE_CLANG	!= clang++ --version 2>/dev/null | grep -q 'clang.* [1-9][0-9]\+\.' && echo clang++
 CXX		:= $(if $(MAYBE_CLANG), $(MAYBE_CLANG), $(CXX))
-OPTIMIZE	:= -O3 -march=native
+OPTIMIZE	:= -O3 -march=native # -march=x86-64-v3 -march=x86-64-v2 -march=x86-64
 
 # == chacha ==
 chacha: main.cc Makefile
