@@ -1,4 +1,5 @@
 // Dedicated to the Public Domain under the Unlicense: https://unlicense.org/UNLICENSE
+
 #ifndef __KECCAK_HH__
 #define __KECCAK_HH__
 

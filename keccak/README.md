@@ -4,7 +4,8 @@
 The header file `keccak.hh` contains a Keccak sponge construction implementation for generic CPUs (ALU)
 in the `class scl::Keccak::class KeccakRng`. The implementation is are based on the original
 [Specification of Keccak](https://keccak.team/files/Keccak-reference-3.0.pdf) from 2011.
-The header file can be used on its own for cryptographic hashing via Keccak.
+The header file can be used on its own for cryptographic hashing via Keccak, and
+as a CSPRNG, it easily passes PractRand at 32TB.
 
 However, the method `KeccakRng::auto_seed()` is implemented in the source file `keccak.cc`, it allows
 the use of a `KeccakRng` sponge as an entropy pool for cryptographically secure random seeds for other PRNGs.
