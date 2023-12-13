@@ -1,4 +1,4 @@
-# This Source Code Form is licensed MPL-2.0: http://mozilla.org/MPL/2.0
+# Dedicated to the Public Domain under the Unlicense: https://unlicense.org/UNLICENSE
 
 all:		# Default Rule
 
