@@ -7,4 +7,6 @@ instruction sets.
 The implementations are all based on Public Domain code by
 D. J. Bernstein and others.
 
+As a CSPRNG, it easily passes PractRand at 32TB.
+
 The source code is dedicated to the Public Domain under the [Unlicense](https://unlicense.org/UNLICENSE).
