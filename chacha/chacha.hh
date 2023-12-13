@@ -1,4 +1,7 @@
-// Licensed CC0 Public Domain
+// Dedicated to the Public Domain under the Unlicense: https://unlicense.org/UNLICENSE
+
+#ifndef __CHACHA_HH__
+#define __CHACHA_HH__
 
 // ChaCha implementations for ALU, SSE, AVX2, based on Public Domain code from:
 // http://cr.yp.to/streamciphers/timings/estreambench/submissions/salsa20/chacha8/ref/chacha.c and CryptoPP
@@ -899,3 +902,5 @@ encrypt (std::array<uint32_t, 16> &state, const size_t blocklength, const uint8_
 }
 
 } // ChaCha
+
+#endif // __CHACHA_HH__
