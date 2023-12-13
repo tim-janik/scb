@@ -1,4 +1,4 @@
-// Licensed CC0 Public Domain
+// Dedicated to the Public Domain under the Unlicense: https://unlicense.org/UNLICENSE
 
 #include <chrono>               // std::chrono
 #include <sys/random.h>

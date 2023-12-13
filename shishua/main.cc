@@ -1,4 +1,4 @@
-// Licensed CC0 Public Domain
+// Dedicated to the Public Domain under the Unlicense: https://unlicense.org/UNLICENSE
 
 #include <array>
 #include <cstdint>
@@ -49,7 +49,6 @@ generate_bytes (const std::array<uint64_t, 4> &seeds, const uint64_t nbytes, uns
 int
 main (int argc, const char *argv[])
 {
-  // Shishua8 should be fine for CSPRNG purposes: https://github.com/rust-random/rand/issues/932
   std::array<uint64_t, 4> seeds{};
   auto const dummy1 [[maybe_unused]] = getrandom (seeds.data(), seeds.size() * sizeof (seeds[0]), GRND_NONBLOCK);
   seeds[0] = timestamp_nsecs(); // "nonce"

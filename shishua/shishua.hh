@@ -1,4 +1,5 @@
-// Licensed CC0 Public Domain
+// Dedicated to the Public Domain under the Unlicense: https://unlicense.org/UNLICENSE
+
 // Based on https://github.com/espadrine/shishua/blob/master/shishua.h
 
 #ifndef SHISHUA_H

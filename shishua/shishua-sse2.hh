@@ -1,4 +1,5 @@
-// Licensed CC0 Public Domain
+// Dedicated to the Public Domain under the Unlicense: https://unlicense.org/UNLICENSE
+
 // Based on https://github.com/espadrine/shishua/blob/master/shishua-sse2.h
 
 // An SSE2/SSSE3 version of shishua. Slower than AVX2, but more compatible.
@@ -7,8 +8,8 @@
 // SSSE3 is recommended, as it has the useful _mm_alignr_epi8 intrinsic.
 // We can still emulate it on SSE2, but it is slower.
 // Consider the half version if AVX2 is not available.
-#ifndef SHISHUA_SSE2_H
-#define SHISHUA_SSE2_H
+#ifndef __SHISHUA_SSE2_HH__
+#define __SHISHUA_SSE2_HH__
 
 #include <stdint.h>
 #include <stddef.h>
@@ -229,4 +230,4 @@ static inline void prng_init(prng_state *s, const uint64_t seed[4]) {
 }
 } // Shishua::Sse2
 
-#endif // SHISHUA_SSE2_H
+#endif // __SHISHUA_SSE2_HH__
