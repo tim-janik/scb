@@ -16,3 +16,5 @@ The subdirectories are structured as follows:
 * `keccak/` contains a Public Domain Keccak PRNG implementation for generic CPUs (ALU) and system entropy gathering code according to the
   "Welcome to the Entropics: Boot-Time Entropy in Embedded Devices" paper.
   Using Keccak allows for a 1600 bit CSPRNG entropy pool, it passes PractRand at 32TB.
+* `spline/` contains a Public Domain cubic spline interpolation implementation, which can be used to create an approximation of a function
+  given a number of knots (control points) with third-order polynomial segments connecting each pair of data points.
