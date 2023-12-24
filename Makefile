@@ -2,7 +2,7 @@
 
 all:		# Default Rule
 
-SUBDIRS	:= mwc256 shishua chacha keccak
+SUBDIRS	:= mwc256 shishua chacha keccak spline
 
 all clean check:
 	 @ true $(foreach DIR, $(SUBDIRS), && $(MAKE) -C "$(DIR)" "$@" )
